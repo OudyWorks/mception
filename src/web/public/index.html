@@ -285,7 +285,7 @@
       <div class="form-group">
         <label for="mcpUpstreamUrl">Remote Upstream MCP URL</label>
         <div style="display: flex; gap: 0.5rem;">
-          <input type="url" id="mcpUpstreamUrl" style="flex: 1;" placeholder="e.g. https://mcp.upwork.com/mcp" required onchange="handleUrlChange()">
+          <input type="url" id="mcpUpstreamUrl" style="flex: 1;" placeholder="e.g. https://mcp.upwork.com/mcp" required>
           <button type="button" class="btn-secondary" id="btnProbe" onclick="detectAuth()">Detect</button>
         </div>
         <small style="color: var(--text-muted); font-size: 0.75rem;">Enter the remote MCP server URL. We'll automatically detect supported auth.</small>
@@ -397,28 +397,6 @@
       }
     }
 
-    function handleUrlChange() {
-      const url = document.getElementById('mcpUpstreamUrl').value.trim();
-      if (!url) return;
-
-      // Suggest identifier and name from URL if empty
-      try {
-        const parsed = new URL(url);
-        const hostParts = parsed.hostname.split('.');
-        let domainName = hostParts[hostParts.length - 2] || hostParts[0];
-        if (domainName.toLowerCase() === 'upwork') domainName = 'upwork';
-        
-        if (!document.getElementById('mcpIdentifier').value) {
-          document.getElementById('mcpIdentifier').value = domainName.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-        }
-        if (!document.getElementById('mcpName').value) {
-          document.getElementById('mcpName').value = domainName.charAt(0).toUpperCase() + domainName.slice(1);
-        }
-      } catch {}
-
-      detectAuth();
-    }
-
     async function detectAuth() {
       const url = document.getElementById('mcpUpstreamUrl').value.trim();
       if (!url) {
@@ -429,6 +407,24 @@
         alert('Please connect with your ADMIN_API_KEY first.');
         return;
       }
+
+      // Suggest identifier and name from URL if currently empty
+      try {
+        const parsed = new URL(url);
+        const hostParts = parsed.hostname.split('.');
+        let domainName = hostParts[hostParts.length - 2] || hostParts[0];
+        if (domainName.toLowerCase() === 'upwork') domainName = 'upwork';
+
+        if (!document.getElementById('mcpIdentifier').value) {
+          document.getElementById('mcpIdentifier').value = domainName
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]/g, '');
+        }
+        if (!document.getElementById('mcpName').value) {
+          document.getElementById('mcpName').value =
+            domainName.charAt(0).toUpperCase() + domainName.slice(1);
+        }
+      } catch {}
 
       const probeBtn = document.getElementById('btnProbe');
       probeBtn.disabled = true;
