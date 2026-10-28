@@ -21,152 +21,191 @@ export const proxyRoutes: FastifyPluginAsync<ProxyRoutesOptions> = async (
   const { db, config, masterKey } = opts;
   const safeFetch = createSafeFetch(config.BLOCK_PRIVATE_NETWORKS);
 
-  fastify.get<{ Params: { identifier: string } }>(
-    '/:identifier/sse',
-    async (request, reply) => {
-      const { identifier } = request.params;
-      const context = await validateBearerToken(
-        request,
-        reply,
-        db,
-        masterKey,
-        identifier
-      );
-      if (!context) {
-        return;
-      }
+  // HEAD check for discovery / preflight
+  const handleHead = async (
+    request: any,
+    reply: any
+  ) => {
+    const { identifier } = request.params;
+    const mcp = await db
+      .selectFrom('registered_mcps')
+      .selectAll()
+      .where('identifier', '=', identifier)
+      .executeTakeFirst();
 
-      const upstreamUrl = new URL(context.upstreamUrl);
-      const upstreamHeaders: Record<string, string> = {
-        Accept: 'text/event-stream',
-      };
-      applyCredentials(upstreamHeaders, context.credentials, upstreamUrl);
+    if (!mcp) {
+      return reply.status(404).send();
+    }
 
-      const abortController = new AbortController();
-      let upstreamRes: Response;
-      try {
-        upstreamRes = await safeFetch(upstreamUrl.toString(), {
-          method: 'GET',
-          headers: upstreamHeaders,
-          signal: abortController.signal,
-        });
+    const context = await validateBearerToken(
+      request,
+      reply,
+      db,
+      masterKey,
+      identifier,
+      config
+    );
+    if (!context) {
+      return;
+    }
 
-        if (
-          upstreamRes.status === 401 &&
-          (context.credentials.type === 'bearer' ||
-            context.credentials.type === 'upstream_oauth')
-        ) {
-          const newToken = await refreshUpstreamToken(
-            context.mcpId,
-            context.credentials,
-            db,
-            masterKey
-          );
-          if (newToken) {
-            context.credentials.token = newToken;
-            applyCredentials(upstreamHeaders, context.credentials, upstreamUrl);
-            upstreamRes = await safeFetch(upstreamUrl.toString(), {
-              method: 'GET',
-              headers: upstreamHeaders,
-              signal: abortController.signal,
-            });
-          }
-        }
-      } catch (err) {
-        return reply.status(502).send({
-          error: `Failed to connect to upstream SSE: ${(err as Error).message}`,
-        });
-      }
+    return reply.status(200).send();
+  };
 
-      if (!upstreamRes.ok) {
-        return reply.status(upstreamRes.status).send({
-          error: `Upstream SSE returned HTTP ${upstreamRes.status}`,
-        });
-      }
+  fastify.head<{ Params: { identifier: string } }>('/:identifier', handleHead);
+  fastify.head<{ Params: { identifier: string } }>('/:identifier/sse', handleHead);
 
-      const clientRes = reply.raw;
-      clientRes.setHeader('Content-Type', 'text/event-stream');
-      clientRes.setHeader('Cache-Control', 'no-cache');
-      clientRes.setHeader('Connection', 'keep-alive');
-      clientRes.flushHeaders();
+  // SSE Transport connection
+  const handleSse = async (
+    request: any,
+    reply: any
+  ) => {
+    const { identifier } = request.params;
+    const context = await validateBearerToken(
+      request,
+      reply,
+      db,
+      masterKey,
+      identifier,
+      config
+    );
+    if (!context) {
+      return;
+    }
 
-      // 15-second heartbeat ping
-      const pingInterval = setInterval(() => {
-        if (!clientRes.writableEnded) {
-          clientRes.write(': ping\n\n');
-        }
-      }, 15_000);
+    const upstreamUrl = new URL(context.upstreamUrl);
+    const upstreamHeaders: Record<string, string> = {
+      Accept: 'text/event-stream',
+    };
+    applyCredentials(upstreamHeaders, context.credentials, upstreamUrl);
 
-      request.raw.on('close', () => {
-        clearInterval(pingInterval);
-        abortController.abort();
+    const abortController = new AbortController();
+    let upstreamRes: Response;
+    try {
+      upstreamRes = await safeFetch(upstreamUrl.toString(), {
+        method: 'GET',
+        headers: upstreamHeaders,
+        signal: abortController.signal,
       });
 
-      if (!upstreamRes.body) {
-        clearInterval(pingInterval);
-        clientRes.end();
-        return;
+      if (
+        upstreamRes.status === 401 &&
+        (context.credentials.type === 'bearer' ||
+          context.credentials.type === 'upstream_oauth')
+      ) {
+        const newToken = await refreshUpstreamToken(
+          context.mcpId,
+          context.credentials,
+          db,
+          masterKey
+        );
+        if (newToken) {
+          context.credentials.token = newToken;
+          applyCredentials(upstreamHeaders, context.credentials, upstreamUrl);
+          upstreamRes = await safeFetch(upstreamUrl.toString(), {
+            method: 'GET',
+            headers: upstreamHeaders,
+            signal: abortController.signal,
+          });
+        }
       }
+    } catch (err) {
+      return reply.status(502).send({
+        error: `Failed to connect to upstream SSE: ${(err as Error).message}`,
+      });
+    }
 
-      const reader = upstreamRes.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+    if (!upstreamRes.ok) {
+      return reply.status(upstreamRes.status).send({
+        error: `Upstream SSE returned HTTP ${upstreamRes.status}`,
+      });
+    }
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+    const clientRes = reply.raw;
+    clientRes.setHeader('Content-Type', 'text/event-stream');
+    clientRes.setHeader('Cache-Control', 'no-cache');
+    clientRes.setHeader('Connection', 'keep-alive');
+    clientRes.flushHeaders();
 
-          buffer += decoder.decode(value, { stream: true });
-          const messages = buffer.split('\n\n');
-          buffer = messages.pop() || '';
+    // 15-second heartbeat ping
+    const pingInterval = setInterval(() => {
+      if (!clientRes.writableEnded) {
+        clientRes.write(': ping\n\n');
+      }
+    }, 15_000);
 
-          for (const message of messages) {
-            if (!message.trim()) continue;
+    request.raw.on('close', () => {
+      clearInterval(pingInterval);
+      abortController.abort();
+    });
 
-            const lines = message.split('\n');
-            let eventName = '';
-            let dataLines: string[] = [];
+    if (!upstreamRes.body) {
+      clearInterval(pingInterval);
+      clientRes.end();
+      return;
+    }
 
-            for (const line of lines) {
-              if (line.startsWith('event:')) {
-                eventName = line.substring(6).trim();
-              } else if (line.startsWith('data:')) {
-                dataLines.push(line.substring(5).trim());
-              }
-            }
+    const reader = upstreamRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-            // Rewriting MCP 'endpoint' event
-            if (eventName === 'endpoint') {
-              const rawData = dataLines.join('\n');
-              const resolvedUpstreamUrl = new URL(rawData, upstreamUrl).toString();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-              const proxySessionId = crypto.randomUUID();
-              globalSessionRegistry.set(proxySessionId, {
-                upstreamMessageUrl: resolvedUpstreamUrl,
-                mcpId: context.mcpId,
-                credentials: context.credentials,
-                createdAt: Date.now(),
-              });
+        buffer += decoder.decode(value, { stream: true });
+        const messages = buffer.split('\n\n');
+        buffer = messages.pop() || '';
 
-              const rewrittenData = `/${identifier}/messages?sessionId=${proxySessionId}`;
-              clientRes.write(`event: endpoint\ndata: ${rewrittenData}\n\n`);
-            } else {
-              // Pipe all other events directly
-              clientRes.write(`${message}\n\n`);
+        for (const message of messages) {
+          if (!message.trim()) continue;
+
+          const lines = message.split('\n');
+          let eventName = '';
+          let dataLines: string[] = [];
+
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              eventName = line.substring(6).trim();
+            } else if (line.startsWith('data:')) {
+              dataLines.push(line.substring(5).trim());
             }
           }
-        }
-      } catch (err) {
-        if (!abortController.signal.aborted) {
-          // Upstream unexpectedly closed
-        }
-      } finally {
-        clearInterval(pingInterval);
-        if (!clientRes.writableEnded) {
-          clientRes.end();
+
+          // Rewriting MCP 'endpoint' event
+          if (eventName === 'endpoint') {
+            const rawData = dataLines.join('\n');
+            const resolvedUpstreamUrl = new URL(rawData, upstreamUrl).toString();
+
+            const proxySessionId = crypto.randomUUID();
+            globalSessionRegistry.set(proxySessionId, {
+              upstreamMessageUrl: resolvedUpstreamUrl,
+              mcpId: context.mcpId,
+              credentials: context.credentials,
+              createdAt: Date.now(),
+            });
+
+            const rewrittenData = `/${identifier}/messages?sessionId=${proxySessionId}`;
+            clientRes.write(`event: endpoint\ndata: ${rewrittenData}\n\n`);
+          } else {
+            // Pipe all other events directly
+            clientRes.write(`${message}\n\n`);
+          }
         }
       }
+    } catch (err) {
+      if (!abortController.signal.aborted) {
+        // Upstream unexpectedly closed
+      }
+    } finally {
+      clearInterval(pingInterval);
+      if (!clientRes.writableEnded) {
+        clientRes.end();
+      }
     }
-  );
+  };
+
+  fastify.get<{ Params: { identifier: string } }>('/:identifier/sse', handleSse);
+  fastify.get<{ Params: { identifier: string } }>('/:identifier', handleSse);
 };

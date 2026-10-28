@@ -20,43 +20,46 @@ export const messageRoutes: FastifyPluginAsync<MessageRoutesOptions> = async (
   const { db, config, masterKey } = opts;
   const safeFetch = createSafeFetch(config.BLOCK_PRIVATE_NETWORKS);
 
-  fastify.post<{
-    Params: { identifier: string };
-    Querystring: { sessionId?: string };
-    Body: any;
-  }>('/:identifier/messages', async (request, reply) => {
+  const handleMessages = async (request: any, reply: any) => {
     const { identifier } = request.params;
-    const { sessionId } = request.query;
+    const { sessionId } = request.query || {};
 
     const context = await validateBearerToken(
       request,
       reply,
       db,
       masterKey,
-      identifier
+      identifier,
+      config
     );
     if (!context) {
       return;
     }
 
-    if (!sessionId) {
-      return reply.status(400).send({
-        error: 'Missing required sessionId query parameter',
-      });
+    const effectiveSessionId =
+      sessionId || (request.headers['mcp-session-id'] as string | undefined);
+
+    let targetUrl: URL;
+    let activeCredentials = context.credentials;
+    let targetMcpId = context.mcpId;
+
+    if (effectiveSessionId) {
+      const sessionInfo = globalSessionRegistry.get(effectiveSessionId);
+      if (!sessionInfo || sessionInfo.mcpId !== context.mcpId) {
+        return reply.status(400).send({
+          error: 'Invalid or expired sessionId. Please re-open the SSE connection.',
+        });
+      }
+      targetUrl = new URL(sessionInfo.upstreamMessageUrl);
+      activeCredentials = sessionInfo.credentials;
+    } else {
+      targetUrl = new URL(context.upstreamUrl);
     }
 
-    const sessionInfo = globalSessionRegistry.get(sessionId);
-    if (!sessionInfo || sessionInfo.mcpId !== context.mcpId) {
-      return reply.status(400).send({
-        error: 'Invalid or expired sessionId. Please re-open the SSE connection.',
-      });
-    }
-
-    const targetUrl = new URL(sessionInfo.upstreamMessageUrl);
     const headers: Record<string, string> = {
       'content-type': 'application/json',
     };
-    applyCredentials(headers, sessionInfo.credentials, targetUrl);
+    applyCredentials(headers, activeCredentials, targetUrl);
 
     let upstreamRes: Response;
     try {
@@ -68,18 +71,18 @@ export const messageRoutes: FastifyPluginAsync<MessageRoutesOptions> = async (
 
       if (
         upstreamRes.status === 401 &&
-        (sessionInfo.credentials.type === 'bearer' ||
-          sessionInfo.credentials.type === 'upstream_oauth')
+        (activeCredentials.type === 'bearer' ||
+          activeCredentials.type === 'upstream_oauth')
       ) {
         const newToken = await refreshUpstreamToken(
-          sessionInfo.mcpId,
-          sessionInfo.credentials,
+          targetMcpId,
+          activeCredentials,
           db,
           masterKey
         );
         if (newToken) {
-          sessionInfo.credentials.token = newToken;
-          applyCredentials(headers, sessionInfo.credentials, targetUrl);
+          activeCredentials.token = newToken;
+          applyCredentials(headers, activeCredentials, targetUrl);
           upstreamRes = await safeFetch(targetUrl.toString(), {
             method: 'POST',
             headers,
@@ -125,5 +128,17 @@ export const messageRoutes: FastifyPluginAsync<MessageRoutesOptions> = async (
     }
 
     return reply.status(202).send({ status: 'accepted' });
-  });
+  };
+
+  fastify.post<{
+    Params: { identifier: string };
+    Querystring: { sessionId?: string };
+    Body: any;
+  }>('/:identifier/messages', handleMessages);
+
+  fastify.post<{
+    Params: { identifier: string };
+    Querystring: { sessionId?: string };
+    Body: any;
+  }>('/:identifier', handleMessages);
 };

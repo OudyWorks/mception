@@ -35,6 +35,14 @@ async function bootstrap() {
   // Register core plugins & routes
   await fastify.register(cors, {
     origin: true,
+    exposedHeaders: ['WWW-Authenticate', 'mcp-protocol-version'],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'Accept',
+      'mcp-protocol-version',
+      'mcp-session-id',
+    ],
   });
 
   await fastify.register(oauthRoutes, { db, config });

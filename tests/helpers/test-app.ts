@@ -35,7 +35,17 @@ export async function createTestApp(
     logger: false,
   });
 
-  await app.register(cors);
+  await app.register(cors, {
+    origin: true,
+    exposedHeaders: ['WWW-Authenticate', 'mcp-protocol-version'],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'Accept',
+      'mcp-protocol-version',
+      'mcp-session-id',
+    ],
+  });
   await app.register(oauthRoutes, { db: testDb.db, config });
   await app.register(proxyRoutes, { db: testDb.db, config, masterKey });
   await app.register(messageRoutes, { db: testDb.db, config, masterKey });

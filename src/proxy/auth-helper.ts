@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
+import type { Config } from '../config.js';
 import {
   decryptCredential,
   type CredentialPayload,
@@ -19,10 +20,16 @@ export async function validateBearerToken(
   reply: FastifyReply,
   db: Kysely<Database>,
   masterKey: Buffer,
-  expectedIdentifier: string
+  expectedIdentifier: string,
+  config: Config
 ): Promise<ValidatedMcpContext | null> {
+  const resourceMetadataUrl = `${config.MCEPTION_PUBLIC_URL}/.well-known/oauth-protected-resource/${expectedIdentifier}`;
   const authHeader = request.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    reply.header(
+      'www-authenticate',
+      `Bearer error="invalid_token", error_description="The access token is missing or invalid", resource_metadata="${resourceMetadataUrl}"`
+    );
     reply.status(401).send({ error: 'Missing or invalid Authorization header' });
     return null;
   }
@@ -41,6 +48,10 @@ export async function validateBearerToken(
     .executeTakeFirst();
 
   if (!tokenRecord) {
+    reply.header(
+      'www-authenticate',
+      `Bearer error="invalid_token", error_description="Invalid or expired access token", resource_metadata="${resourceMetadataUrl}"`
+    );
     reply.status(401).send({ error: 'Invalid or expired access token' });
     return null;
   }

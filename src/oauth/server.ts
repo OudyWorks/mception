@@ -32,6 +32,75 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (
     });
   });
 
+  // RFC 9728 OAuth Protected Resource Metadata (scoped by identifier)
+  fastify.get<{ Params: { identifier: string } }>(
+    '/.well-known/oauth-protected-resource/:identifier',
+    async (request, reply) => {
+      const { identifier } = request.params;
+      const mcp = await db
+        .selectFrom('registered_mcps')
+        .selectAll()
+        .where('identifier', '=', identifier)
+        .executeTakeFirst();
+
+      if (!mcp) {
+        return reply.status(404).send({ error: 'Endpoint not found' });
+      }
+
+      reply.header('content-type', 'application/json');
+      return reply.send({
+        resource: `${config.MCEPTION_PUBLIC_URL}/${identifier}`,
+        authorization_servers: [`${config.MCEPTION_PUBLIC_URL}/${identifier}`],
+        bearer_methods_supported: ['header'],
+        scopes_supported: ['mcp'],
+        resource_name: mcp.name,
+      });
+    }
+  );
+
+  // RFC 9728 alternative scoped path
+  fastify.get<{ Params: { identifier: string } }>(
+    '/:identifier/.well-known/oauth-protected-resource',
+    async (request, reply) => {
+      const { identifier } = request.params;
+      const mcp = await db
+        .selectFrom('registered_mcps')
+        .selectAll()
+        .where('identifier', '=', identifier)
+        .executeTakeFirst();
+
+      if (!mcp) {
+        return reply.status(404).send({ error: 'Endpoint not found' });
+      }
+
+      reply.header('content-type', 'application/json');
+      return reply.send({
+        resource: `${config.MCEPTION_PUBLIC_URL}/${identifier}`,
+        authorization_servers: [`${config.MCEPTION_PUBLIC_URL}/${identifier}`],
+        bearer_methods_supported: ['header'],
+        scopes_supported: ['mcp'],
+        resource_name: mcp.name,
+      });
+    }
+  );
+
+  // RFC 9728 root fallback (for discovery tools checking host root)
+  fastify.get('/.well-known/oauth-protected-resource', async (request, reply) => {
+    const mcps = await db.selectFrom('registered_mcps').selectAll().execute();
+    if (mcps.length === 0) {
+      return reply.status(404).send({ error: 'No MCP endpoints registered' });
+    }
+    const mcp = mcps[0];
+    reply.header('content-type', 'application/json');
+    return reply.send({
+      resource: `${config.MCEPTION_PUBLIC_URL}/${mcp.identifier}`,
+      authorization_servers: [`${config.MCEPTION_PUBLIC_URL}/${mcp.identifier}`],
+      bearer_methods_supported: ['header'],
+      scopes_supported: ['mcp'],
+      resource_name: mcp.name,
+    });
+  });
+
   // RFC 8414 OAuth 2.0 Authorization Server Metadata
   fastify.get<{ Params: { identifier: string } }>(
     '/:identifier/.well-known/oauth-authorization-server',

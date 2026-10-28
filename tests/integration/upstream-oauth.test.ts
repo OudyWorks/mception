@@ -136,6 +136,66 @@ describe('Upstream OAuth Discovery & Client Flow Integration Tests', () => {
     expect(doc.token_endpoint_auth_method).toBe('none');
   });
 
+  it('serves RFC 9728 OAuth Protected Resource Metadata and returns 401 with resource_metadata for Gemini discovery', async () => {
+    // Seed an MCP endpoint
+    await appInstance.testDb.db
+      .insertInto('registered_mcps')
+      .values({
+        id: 'upwork-test-id',
+        identifier: 'upwork',
+        name: 'Upwork MCP',
+        upstream_url: `${mockBaseUrl}/mcp`,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+      })
+      .execute();
+
+    // 1. Check RFC 9728 discovery endpoint
+    const metaRes = await appInstance.app.inject({
+      method: 'GET',
+      url: '/.well-known/oauth-protected-resource/upwork',
+    });
+
+    expect(metaRes.statusCode).toBe(200);
+    const meta = metaRes.json();
+    expect(meta.resource).toBe('http://localhost:3000/upwork');
+    expect(meta.authorization_servers).toContain(
+      'http://localhost:3000/upwork'
+    );
+    expect(meta.resource_name).toBe('Upwork MCP');
+
+    // 2. Check HEAD /upwork preflight without token
+    const headRes = await appInstance.app.inject({
+      method: 'HEAD',
+      url: '/upwork',
+    });
+    expect(headRes.statusCode).toBe(401);
+    expect(headRes.headers['www-authenticate']).toContain(
+      'resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource/upwork"'
+    );
+
+    // 3. Check GET /upwork without token
+    const getRes = await appInstance.app.inject({
+      method: 'GET',
+      url: '/upwork',
+    });
+    expect(getRes.statusCode).toBe(401);
+    expect(getRes.headers['www-authenticate']).toContain(
+      'resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource/upwork"'
+    );
+
+    // 4. Check POST /upwork without token
+    const postRes = await appInstance.app.inject({
+      method: 'POST',
+      url: '/upwork',
+      payload: { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    });
+    expect(postRes.statusCode).toBe(401);
+    expect(postRes.headers['www-authenticate']).toContain(
+      'resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource/upwork"'
+    );
+  });
+
   it('probes upstream server and discovers RFC 9728 / OAuth 2.1 metadata', async () => {
     const res = await appInstance.app.inject({
       method: 'POST',
