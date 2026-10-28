@@ -1,0 +1,24 @@
+services:
+  mception:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mception:latest
+    container_name: mception
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MCEPTION_PUBLIC_URL=http://localhost:3000
+      - ADMIN_API_KEY=mception-super-secret-admin-key
+      # Optional: set a static 32-byte (64 hex characters) master key
+      # - MCEPTION_MASTER_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - BLOCK_PRIVATE_NETWORKS=false
+      - LOG_LEVEL=info
+      - DATABASE_PATH=/data/mception.db
+    volumes:
+      - mception_data:/data
+
+volumes:
+  mception_data:

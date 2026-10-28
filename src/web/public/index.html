@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCeption - Gemini Spark MCP Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --success: #10b981;
+      --code-bg: #1f2937;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #fff;
+    }
+    .logo span {
+      background: linear-gradient(135deg, #60a5fa, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    input, select, textarea {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: var(--primary-hover); }
+    .btn-danger { background: #374151; color: #f87171; }
+    .btn-danger:hover { background: #991b1b; color: #fff; }
+    .btn-secondary { background: #374151; }
+    .btn-secondary:hover { background: #4b5563; }
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .top-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      background: #1e3a8a;
+      color: #93c5fd;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .url-box {
+      background: var(--code-bg);
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #374151;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #e5e7eb;
+      word-break: break-all;
+    }
+    .copy-btn {
+      background: transparent;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      color: var(--primary);
+    }
+    .copy-btn:hover { background: rgba(59, 130, 246, 0.1); }
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--card-border);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .form-group label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span>MCeption</span> Hub
+    </div>
+    <div class="auth-bar">
+      <input type="password" id="adminKeyInput" placeholder="Enter ADMIN_API_KEY">
+      <button onclick="saveAdminKey()">Connect</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="top-actions">
+      <div>
+        <h1 style="font-size: 1.5rem; font-weight: 700;">Registered MCP Endpoints</h1>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">OAuth 2.1 Virtual Hub for Gemini Spark Connected Apps</p>
+      </div>
+      <button onclick="openModal()">+ Register Remote MCP</button>
+    </div>
+
+    <div id="mcpGrid" class="grid">
+      <!-- Dynamic MCP Cards -->
+    </div>
+
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No MCP endpoints registered yet.</p>
+      <p style="font-size: 0.875rem;">Click "+ Register Remote MCP" to connect an upstream server.</p>
+    </div>
+  </main>
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <h2 style="font-size: 1.25rem;">Register Upstream MCP Server</h2>
+
+      <div class="form-group">
+        <label for="mcpIdentifier">Identifier (Slug)</label>
+        <input type="text" id="mcpIdentifier" placeholder="e.g. weather, jira, github" required>
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Used in virtual URL: https://mception.host/<b>identifier</b></small>
+      </div>
+
+      <div class="form-group">
+        <label for="mcpName">Display Name</label>
+        <input type="text" id="mcpName" placeholder="e.g. Weather Service" required>
+      </div>
+
+      <div class="form-group">
+        <label for="mcpUpstreamUrl">Remote Upstream URL (HTTP/SSE)</label>
+        <input type="url" id="mcpUpstreamUrl" placeholder="https://api.example.com/sse" required>
+      </div>
+
+      <div class="form-group">
+        <label for="mcpAuthType">Authentication Scheme</label>
+        <select id="mcpAuthType" onchange="renderAuthInputs()">
+          <option value="none">None (Public)</option>
+          <option value="bearer">Bearer Token</option>
+          <option value="api_key_header">API Key (HTTP Header)</option>
+          <option value="api_key_query">API Key (Query Parameter)</option>
+          <option value="basic">HTTP Basic Authentication</option>
+          <option value="custom_headers">Custom Headers (JSON)</option>
+        </select>
+      </div>
+
+      <div id="dynamicAuthInputs"></div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button onclick="submitMcp()">Register Endpoint</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let adminKey = localStorage.getItem('mception_admin_key') || '';
+    if (adminKey) {
+      document.getElementById('adminKeyInput').value = adminKey;
+    }
+
+    function saveAdminKey() {
+      adminKey = document.getElementById('adminKeyInput').value.trim();
+      localStorage.setItem('mception_admin_key', adminKey);
+      fetchMcps();
+    }
+
+    function openModal() {
+      document.getElementById('modal').classList.add('active');
+      renderAuthInputs();
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+
+    function renderAuthInputs() {
+      const authType = document.getElementById('mcpAuthType').value;
+      const container = document.getElementById('dynamicAuthInputs');
+      container.innerHTML = '';
+
+      if (authType === 'bearer') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label>Bearer Token</label>
+            <input type="password" id="bearerToken" placeholder="sk-..." required>
+          </div>
+        `;
+      } else if (authType === 'api_key_header') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label>Header Name</label>
+            <input type="text" id="headerName" placeholder="X-API-Key" required>
+          </div>
+          <div class="form-group" style="margin-top:0.5rem;">
+            <label>API Key Secret</label>
+            <input type="password" id="apiKeyVal" placeholder="secret..." required>
+          </div>
+        `;
+      } else if (authType === 'api_key_query') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label>Query Parameter Name</label>
+            <input type="text" id="paramName" placeholder="api_key" required>
+          </div>
+          <div class="form-group" style="margin-top:0.5rem;">
+            <label>API Key Secret</label>
+            <input type="password" id="apiKeyVal" placeholder="secret..." required>
+          </div>
+        `;
+      } else if (authType === 'basic') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="basicUser" placeholder="admin" required>
+          </div>
+          <div class="form-group" style="margin-top:0.5rem;">
+            <label>Password</label>
+            <input type="password" id="basicPass" placeholder="password" required>
+          </div>
+        `;
+      } else if (authType === 'custom_headers') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label>Headers (JSON Object)</label>
+            <textarea id="customHeadersJson" rows="3" placeholder='{"X-Tenant-Id": "123"}'>{}</textarea>
+          </div>
+        `;
+      }
+    }
+
+    async function fetchMcps() {
+      if (!adminKey) return;
+      try {
+        const res = await fetch('/api/mcps', {
+          headers: { 'Authorization': `Bearer ${adminKey}` }
+        });
+        if (res.status === 401) {
+          alert('Invalid ADMIN_API_KEY.');
+          return;
+        }
+        const data = await res.json();
+        renderMcps(data.mcps || []);
+      } catch (err) {
+        console.error('Failed to fetch MCPs:', err);
+      }
+    }
+
+    function renderMcps(mcps) {
+      const grid = document.getElementById('mcpGrid');
+      const empty = document.getElementById('emptyState');
+      grid.innerHTML = '';
+
+      if (mcps.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      mcps.forEach(mcp => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-header">
+            <div>
+              <div class="card-title">${escapeHtml(mcp.name)}</div>
+              <small style="color:var(--text-muted); font-family:monospace;">/${escapeHtml(mcp.identifier)}</small>
+            </div>
+            <span class="badge">${escapeHtml(mcp.auth_type)}</span>
+          </div>
+
+          <div class="form-group">
+            <label style="font-size:0.75rem;">Gemini Connected App URL</label>
+            <div class="url-box">
+              <span>${mcp.connected_app_url}</span>
+              <button class="copy-btn" onclick="copyToClipboard('${mcp.connected_app_url}')">Copy</button>
+            </div>
+          </div>
+
+          <div style="font-size:0.8rem; color:var(--text-muted);">
+            Target: <code style="color:#d1d5db;">${escapeHtml(mcp.upstream_url)}</code>
+          </div>
+
+          <div class="card-footer">
+            <span>Created ${new Date(mcp.created_at).toLocaleDateString()}</span>
+            <button class="btn-danger" style="padding:0.3rem 0.6rem; font-size:0.75rem;" onclick="deleteMcp('${mcp.identifier}')">Delete</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    async function submitMcp() {
+      const identifier = document.getElementById('mcpIdentifier').value.trim();
+      const name = document.getElementById('mcpName').value.trim();
+      const upstream_url = document.getElementById('mcpUpstreamUrl').value.trim();
+      const authType = document.getElementById('mcpAuthType').value;
+
+      if (!identifier || !name || !upstream_url) {
+        alert('Please fill in identifier, name, and upstream URL.');
+        return;
+      }
+
+      let credentials = { type: authType };
+      if (authType === 'bearer') {
+        credentials.token = document.getElementById('bearerToken').value;
+      } else if (authType === 'api_key_header') {
+        credentials.headerName = document.getElementById('headerName').value;
+        credentials.apiKey = document.getElementById('apiKeyVal').value;
+      } else if (authType === 'api_key_query') {
+        credentials.paramName = document.getElementById('paramName').value;
+        credentials.apiKey = document.getElementById('apiKeyVal').value;
+      } else if (authType === 'basic') {
+        credentials.username = document.getElementById('basicUser').value;
+        credentials.password = document.getElementById('basicPass').value;
+      } else if (authType === 'custom_headers') {
+        try {
+          credentials.headers = JSON.parse(document.getElementById('customHeadersJson').value);
+        } catch {
+          alert('Invalid JSON in custom headers.');
+          return;
+        }
+      }
+
+      try {
+        const res = await fetch('/api/mcps', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminKey}`
+          },
+          body: JSON.stringify({ identifier, name, upstream_url, credentials })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          alert('Failed to register: ' + (errData.error || res.statusText));
+          return;
+        }
+
+        closeModal();
+        fetchMcps();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function deleteMcp(identifier) {
+      if (!confirm(`Are you sure you want to delete "${identifier}"?`)) return;
+
+      try {
+        const res = await fetch(`/api/mcps/${identifier}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${adminKey}` }
+        });
+        if (!res.ok) {
+          alert('Failed to delete endpoint.');
+          return;
+        }
+        fetchMcps();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text);
+      alert('Copied to clipboard! Paste this URL into Gemini Spark Connected Apps.');
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    if (adminKey) {
+      fetchMcps();
+    }
+  </script>
+</body>
+</html>
