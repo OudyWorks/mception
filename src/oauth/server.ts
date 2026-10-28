@@ -16,6 +16,22 @@ export const oauthRoutes: FastifyPluginAsync<OAuthRoutesOptions> = async (
 ) => {
   const { db, config } = opts;
 
+  // RFC / SEP-991 Client ID Metadata Document for Upstream OAuth Servers
+  fastify.get('/oauth/client-metadata.json', async (request, reply) => {
+    reply.header('content-type', 'application/json');
+    return reply.send({
+      client_id: `${config.MCEPTION_PUBLIC_URL}/oauth/client-metadata.json`,
+      client_name: 'MCeption',
+      client_uri: config.MCEPTION_PUBLIC_URL,
+      redirect_uris: [
+        `${config.MCEPTION_PUBLIC_URL}/api/oauth/upstream/callback`,
+      ],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      token_endpoint_auth_method: 'none',
+    });
+  });
+
   // RFC 8414 OAuth 2.0 Authorization Server Metadata
   fastify.get<{ Params: { identifier: string } }>(
     '/:identifier/.well-known/oauth-authorization-server',

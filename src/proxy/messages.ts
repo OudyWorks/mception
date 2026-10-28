@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 import type { Config } from '../config.js';
 import type { Database } from '../db/types.js';
 import { createSafeFetch } from '../security/ssrf.js';
+import { refreshUpstreamToken } from '../upstream/oauth.js';
 import { applyCredentials, validateBearerToken } from './auth-helper.js';
 import { globalSessionRegistry } from './sessions.js';
 
@@ -64,6 +65,28 @@ export const messageRoutes: FastifyPluginAsync<MessageRoutesOptions> = async (
         headers,
         body: JSON.stringify(request.body),
       });
+
+      if (
+        upstreamRes.status === 401 &&
+        (sessionInfo.credentials.type === 'bearer' ||
+          sessionInfo.credentials.type === 'upstream_oauth')
+      ) {
+        const newToken = await refreshUpstreamToken(
+          sessionInfo.mcpId,
+          sessionInfo.credentials,
+          db,
+          masterKey
+        );
+        if (newToken) {
+          sessionInfo.credentials.token = newToken;
+          applyCredentials(headers, sessionInfo.credentials, targetUrl);
+          upstreamRes = await safeFetch(targetUrl.toString(), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(request.body),
+          });
+        }
+      }
     } catch (err) {
       return reply.status(502).send({
         error: `Failed to forward message to upstream MCP: ${(err as Error).message}`,

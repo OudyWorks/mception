@@ -4,6 +4,7 @@ import type { Kysely } from 'kysely';
 import type { Config } from '../config.js';
 import type { Database } from '../db/types.js';
 import { createSafeFetch } from '../security/ssrf.js';
+import { refreshUpstreamToken } from '../upstream/oauth.js';
 import { applyCredentials, validateBearerToken } from './auth-helper.js';
 import { globalSessionRegistry } from './sessions.js';
 
@@ -49,6 +50,28 @@ export const proxyRoutes: FastifyPluginAsync<ProxyRoutesOptions> = async (
           headers: upstreamHeaders,
           signal: abortController.signal,
         });
+
+        if (
+          upstreamRes.status === 401 &&
+          (context.credentials.type === 'bearer' ||
+            context.credentials.type === 'upstream_oauth')
+        ) {
+          const newToken = await refreshUpstreamToken(
+            context.mcpId,
+            context.credentials,
+            db,
+            masterKey
+          );
+          if (newToken) {
+            context.credentials.token = newToken;
+            applyCredentials(upstreamHeaders, context.credentials, upstreamUrl);
+            upstreamRes = await safeFetch(upstreamUrl.toString(), {
+              method: 'GET',
+              headers: upstreamHeaders,
+              signal: abortController.signal,
+            });
+          }
+        }
       } catch (err) {
         return reply.status(502).send({
           error: `Failed to connect to upstream SSE: ${(err as Error).message}`,

@@ -87,6 +87,7 @@ export function applyCredentials(
 ): void {
   switch (credentials.type) {
     case 'bearer':
+    case 'upstream_oauth':
       headers['authorization'] = `Bearer ${credentials.token}`;
       break;
     case 'api_key_header':

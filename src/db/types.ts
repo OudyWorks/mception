@@ -15,7 +15,8 @@ export type AuthType =
   | 'api_key_header'
   | 'api_key_query'
   | 'basic'
-  | 'custom_headers';
+  | 'custom_headers'
+  | 'upstream_oauth';
 
 export interface CredentialTable {
   id: string;
@@ -47,9 +48,22 @@ export interface TokenTable {
   revoked_at: number | null;
 }
 
+export interface UpstreamOAuthStateTable {
+  state: string;
+  mcp_identifier: string;
+  mcp_name: string;
+  upstream_url: string;
+  token_endpoint: string;
+  client_id: string;
+  code_verifier: string;
+  created_at: number;
+  expires_at: number;
+}
+
 export interface Database {
   registered_mcps: RegisteredMcpTable;
   credentials: CredentialTable;
   auth_codes: AuthCodeTable;
   tokens: TokenTable;
+  upstream_oauth_states: UpstreamOAuthStateTable;
 }

@@ -3,26 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MCeption - Gemini Spark MCP Hub</title>
+  <title>MCeption - Model Context Protocol Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090d16;
-      --card-bg: #111827;
-      --card-border: #1f2937;
-      --text: #f3f4f6;
-      --text-muted: #9ca3af;
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
       --primary: #3b82f6;
       --primary-hover: #2563eb;
-      --danger: #ef4444;
       --success: #10b981;
-      --code-bg: #1f2937;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #090d16;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -30,16 +31,12 @@
       flex-direction: column;
     }
     header {
-      background: rgba(17, 24, 39, 0.8);
-      backdrop-filter: blur(8px);
+      background: #0b1120;
       border-bottom: 1px solid var(--card-border);
       padding: 1rem 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 10;
     }
     .logo {
       display: flex;
@@ -49,25 +46,21 @@
       font-size: 1.25rem;
       color: #fff;
     }
-    .logo span {
-      background: linear-gradient(135deg, #60a5fa, #a855f7);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+    .logo span { color: var(--primary); }
     .auth-bar {
       display: flex;
-      align-items: center;
       gap: 0.5rem;
+      align-items: center;
     }
     input, select, textarea {
-      background: var(--code-bg);
+      background: #0f172a;
       border: 1px solid var(--card-border);
-      color: var(--text);
-      padding: 0.5rem 0.75rem;
       border-radius: 6px;
-      font-family: inherit;
+      padding: 0.5rem 0.75rem;
+      color: #fff;
       font-size: 0.875rem;
       outline: none;
+      transition: border-color 0.2s;
     }
     input:focus, select:focus, textarea:focus {
       border-color: var(--primary);
@@ -80,19 +73,46 @@
       border-radius: 6px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, opacity 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
     }
     button:hover { background: var(--primary-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-danger { background: #374151; color: #f87171; }
     .btn-danger:hover { background: #991b1b; color: #fff; }
     .btn-secondary { background: #374151; }
     .btn-secondary:hover { background: #4b5563; }
+    .btn-oauth { background: #10b981; }
+    .btn-oauth:hover { background: #059669; }
+
     main {
       flex: 1;
       max-width: 1200px;
       width: 100%;
       margin: 0 auto;
       padding: 2rem;
+    }
+    .alert {
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .alert-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #059669;
+      color: #6ee7b7;
+    }
+    .alert-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #dc2626;
+      color: #fca5a5;
     }
     .top-actions {
       display: flex;
@@ -131,6 +151,10 @@
       background: #1e3a8a;
       color: #93c5fd;
       font-family: 'JetBrains Mono', monospace;
+    }
+    .badge-oauth {
+      background: #064e3b;
+      color: #6ee7b7;
     }
     .url-box {
       background: var(--code-bg);
@@ -177,7 +201,7 @@
       border: 1px solid var(--card-border);
       border-radius: 12px;
       width: 100%;
-      max-width: 520px;
+      max-width: 560px;
       padding: 2rem;
       display: flex;
       flex-direction: column;
@@ -191,6 +215,22 @@
     .form-group label {
       font-size: 0.875rem;
       color: var(--text-muted);
+    }
+    .probe-card {
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid #374151;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .probe-title {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     .modal-actions {
       display: flex;
@@ -218,6 +258,8 @@
   </header>
 
   <main>
+    <div id="statusAlert" class="alert" style="display: none;"></div>
+
     <div class="top-actions">
       <div>
         <h1 style="font-size: 1.5rem; font-weight: 700;">Registered MCP Endpoints</h1>
@@ -241,38 +283,50 @@
       <h2 style="font-size: 1.25rem;">Register Upstream MCP Server</h2>
 
       <div class="form-group">
+        <label for="mcpUpstreamUrl">Remote Upstream MCP URL</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="url" id="mcpUpstreamUrl" style="flex: 1;" placeholder="e.g. https://mcp.upwork.com/mcp" required onchange="handleUrlChange()">
+          <button type="button" class="btn-secondary" id="btnProbe" onclick="detectAuth()">Detect</button>
+        </div>
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Enter the remote MCP server URL. We'll automatically detect supported auth.</small>
+      </div>
+
+      <div id="probeStatusCard" style="display: none;"></div>
+
+      <div class="form-group">
         <label for="mcpIdentifier">Identifier (Slug)</label>
-        <input type="text" id="mcpIdentifier" placeholder="e.g. weather, jira, github" required>
-        <small style="color: var(--text-muted); font-size: 0.75rem;">Used in virtual URL: https://mception.host/<b>identifier</b></small>
+        <input type="text" id="mcpIdentifier" placeholder="e.g. upwork, weather, jira" required>
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Virtual endpoint: https://mcp.oudy.dev/<b>identifier</b></small>
       </div>
 
       <div class="form-group">
         <label for="mcpName">Display Name</label>
-        <input type="text" id="mcpName" placeholder="e.g. Weather Service" required>
+        <input type="text" id="mcpName" placeholder="e.g. Upwork MCP" required>
       </div>
 
-      <div class="form-group">
-        <label for="mcpUpstreamUrl">Remote Upstream URL (HTTP/SSE)</label>
-        <input type="url" id="mcpUpstreamUrl" placeholder="https://api.example.com/sse" required>
+      <div id="authContainer">
+        <div class="form-group" id="manualAuthGroup" style="display: none;">
+          <label for="mcpAuthType">Authentication Scheme</label>
+          <select id="mcpAuthType" onchange="renderAuthInputs()">
+            <option value="none">None (Public)</option>
+            <option value="bearer">Bearer Token</option>
+            <option value="api_key_header">API Key (HTTP Header)</option>
+            <option value="api_key_query">API Key (Query Parameter)</option>
+            <option value="basic">HTTP Basic Authentication</option>
+            <option value="custom_headers">Custom Headers (JSON)</option>
+          </select>
+        </div>
+
+        <div id="dynamicAuthInputs"></div>
       </div>
 
-      <div class="form-group">
-        <label for="mcpAuthType">Authentication Scheme</label>
-        <select id="mcpAuthType" onchange="renderAuthInputs()">
-          <option value="none">None (Public)</option>
-          <option value="bearer">Bearer Token</option>
-          <option value="api_key_header">API Key (HTTP Header)</option>
-          <option value="api_key_query">API Key (Query Parameter)</option>
-          <option value="basic">HTTP Basic Authentication</option>
-          <option value="custom_headers">Custom Headers (JSON)</option>
-        </select>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+        <a href="javascript:void(0)" id="toggleManualAuth" onclick="toggleManualMode()" style="color: var(--text-muted); font-size: 0.75rem; text-decoration: underline;">Custom / Manual Auth Options</a>
       </div>
-
-      <div id="dynamicAuthInputs"></div>
 
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-        <button onclick="submitMcp()">Register Endpoint</button>
+        <button id="btnSubmitMcp" onclick="submitMcp()">Register Endpoint</button>
       </div>
     </div>
   </div>
@@ -283,6 +337,32 @@
       document.getElementById('adminKeyInput').value = adminKey;
     }
 
+    let detectedAuth = null;
+    let manualMode = false;
+
+    // Check for query parameters (?success=... or ?error=...)
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const success = params.get('success');
+      const error = params.get('error');
+
+      if (success) {
+        showAlert(success, 'success');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (error) {
+        showAlert(error, 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
+
+    function showAlert(message, type) {
+      const alertBox = document.getElementById('statusAlert');
+      alertBox.textContent = (type === 'success' ? '✓ ' : '⚠ ') + message;
+      alertBox.className = 'alert ' + (type === 'success' ? 'alert-success' : 'alert-error');
+      alertBox.style.display = 'flex';
+      setTimeout(() => { alertBox.scrollIntoView({ behavior: 'smooth' }); }, 100);
+    }
+
     function saveAdminKey() {
       adminKey = document.getElementById('adminKeyInput').value.trim();
       localStorage.setItem('mception_admin_key', adminKey);
@@ -291,11 +371,191 @@
 
     function openModal() {
       document.getElementById('modal').classList.add('active');
-      renderAuthInputs();
+      document.getElementById('mcpUpstreamUrl').value = '';
+      document.getElementById('mcpIdentifier').value = '';
+      document.getElementById('mcpName').value = '';
+      document.getElementById('probeStatusCard').style.display = 'none';
+      detectedAuth = null;
+      manualMode = false;
+      document.getElementById('manualAuthGroup').style.display = 'none';
+      document.getElementById('dynamicAuthInputs').innerHTML = '';
+      resetSubmitButton();
     }
 
     function closeModal() {
       document.getElementById('modal').classList.remove('active');
+    }
+
+    function toggleManualMode() {
+      manualMode = !manualMode;
+      const group = document.getElementById('manualAuthGroup');
+      group.style.display = manualMode ? 'flex' : 'none';
+      const toggleLink = document.getElementById('toggleManualAuth');
+      toggleLink.textContent = manualMode ? 'Hide Manual Options' : 'Custom / Manual Auth Options';
+      if (manualMode) {
+        renderAuthInputs();
+      }
+    }
+
+    function handleUrlChange() {
+      const url = document.getElementById('mcpUpstreamUrl').value.trim();
+      if (!url) return;
+
+      // Suggest identifier and name from URL if empty
+      try {
+        const parsed = new URL(url);
+        const hostParts = parsed.hostname.split('.');
+        let domainName = hostParts[hostParts.length - 2] || hostParts[0];
+        if (domainName.toLowerCase() === 'upwork') domainName = 'upwork';
+        
+        if (!document.getElementById('mcpIdentifier').value) {
+          document.getElementById('mcpIdentifier').value = domainName.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        }
+        if (!document.getElementById('mcpName').value) {
+          document.getElementById('mcpName').value = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+        }
+      } catch {}
+
+      detectAuth();
+    }
+
+    async function detectAuth() {
+      const url = document.getElementById('mcpUpstreamUrl').value.trim();
+      if (!url) {
+        alert('Please enter an upstream URL first.');
+        return;
+      }
+      if (!adminKey) {
+        alert('Please connect with your ADMIN_API_KEY first.');
+        return;
+      }
+
+      const probeBtn = document.getElementById('btnProbe');
+      probeBtn.disabled = true;
+      probeBtn.textContent = 'Probing...';
+
+      const card = document.getElementById('probeStatusCard');
+      card.style.display = 'block';
+      card.className = 'probe-card';
+      card.innerHTML = `<span style="color:var(--text-muted);">Inspecting upstream endpoint authentication capabilities...</span>`;
+
+      try {
+        const res = await fetch('/api/mcps/probe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminKey}`
+          },
+          body: JSON.stringify({ upstream_url: url })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Probe failed');
+        }
+
+        detectedAuth = data;
+        renderDetectedAuth(data);
+      } catch (err) {
+        card.innerHTML = `
+          <div class="probe-title" style="color:var(--danger);">Probe Failed</div>
+          <p style="color:var(--text-muted); font-size:0.8rem;">${escapeHtml(err.message)}</p>
+        `;
+        resetSubmitButton();
+      } finally {
+        probeBtn.disabled = false;
+        probeBtn.textContent = 'Detect';
+      }
+    }
+
+    function renderDetectedAuth(probe) {
+      const card = document.getElementById('probeStatusCard');
+      const submitBtn = document.getElementById('btnSubmitMcp');
+      const dynamicInputs = document.getElementById('dynamicAuthInputs');
+      dynamicInputs.innerHTML = '';
+
+      if (probe.auth_type === 'upstream_oauth') {
+        const provider = probe.provider_name || 'OAuth 2.1 Provider';
+        if (probe.provider_name) {
+          document.getElementById('mcpName').value = probe.provider_name;
+        }
+
+        card.innerHTML = `
+          <div class="probe-title" style="color:var(--success);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Interactive OAuth 2.1 Supported (${escapeHtml(provider)})
+          </div>
+          <p style="color:var(--text-muted); font-size:0.8rem;">
+            This MCP server requires authenticating directly with <b>${escapeHtml(provider)}</b>. When you click below, you'll be redirected to authorize access and securely return here.
+          </p>
+        `;
+
+        submitBtn.className = 'btn-oauth';
+        submitBtn.textContent = `Authorize with ${provider} & Connect`;
+        submitBtn.onclick = startUpstreamOAuth;
+      } else if (probe.auth_type === 'bearer') {
+        card.innerHTML = `
+          <div class="probe-title" style="color:#60a5fa;">Bearer Token Required</div>
+          <p style="color:var(--text-muted); font-size:0.8rem;">Upstream server requires an authorization Bearer token.</p>
+        `;
+        dynamicInputs.innerHTML = `
+          <div class="form-group">
+            <label>Bearer Token</label>
+            <input type="password" id="bearerToken" placeholder="sk-..." required>
+          </div>
+        `;
+        resetSubmitButton();
+      } else if (probe.auth_type === 'basic') {
+        card.innerHTML = `
+          <div class="probe-title" style="color:#60a5fa;">HTTP Basic Authentication Required</div>
+        `;
+        dynamicInputs.innerHTML = `
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="basicUser" placeholder="admin" required>
+          </div>
+          <div class="form-group" style="margin-top:0.5rem;">
+            <label>Password</label>
+            <input type="password" id="basicPass" placeholder="password" required>
+          </div>
+        `;
+        resetSubmitButton();
+      } else if (probe.auth_type === 'none') {
+        card.innerHTML = `
+          <div class="probe-title" style="color:var(--success);">No Authentication Required</div>
+          <p style="color:var(--text-muted); font-size:0.8rem;">This MCP server is public and does not require credentials.</p>
+        `;
+        resetSubmitButton();
+      } else {
+        card.innerHTML = `
+          <div class="probe-title" style="color:var(--warning);">Custom Auth Required</div>
+          <p style="color:var(--text-muted); font-size:0.8rem;">${escapeHtml(probe.description || 'Configure credentials below.')}</p>
+        `;
+        toggleManualMode();
+        resetSubmitButton();
+      }
+    }
+
+    function resetSubmitButton() {
+      const submitBtn = document.getElementById('btnSubmitMcp');
+      submitBtn.className = '';
+      submitBtn.textContent = 'Register Endpoint';
+      submitBtn.onclick = submitMcp;
+    }
+
+    function startUpstreamOAuth() {
+      const identifier = document.getElementById('mcpIdentifier').value.trim();
+      const name = document.getElementById('mcpName').value.trim();
+      const upstream_url = document.getElementById('mcpUpstreamUrl').value.trim();
+
+      if (!identifier || !name || !upstream_url) {
+        alert('Please fill in identifier, name, and upstream URL.');
+        return;
+      }
+
+      // Redirect browser to start upstream OAuth flow
+      const startUrl = `/api/oauth/upstream/start?upstream_url=${encodeURIComponent(upstream_url)}&identifier=${encodeURIComponent(identifier)}&name=${encodeURIComponent(name)}&admin_key=${encodeURIComponent(adminKey)}`;
+      window.location.href = startUrl;
     }
 
     function renderAuthInputs() {
@@ -382,6 +642,7 @@
       empty.style.display = 'none';
 
       mcps.forEach(mcp => {
+        const isOAuth = mcp.auth_type === 'upstream_oauth';
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
@@ -390,11 +651,11 @@
               <div class="card-title">${escapeHtml(mcp.name)}</div>
               <small style="color:var(--text-muted); font-family:monospace;">/${escapeHtml(mcp.identifier)}</small>
             </div>
-            <span class="badge">${escapeHtml(mcp.auth_type)}</span>
+            <span class="badge ${isOAuth ? 'badge-oauth' : ''}">${escapeHtml(mcp.auth_type)}</span>
           </div>
 
           <div class="form-group">
-            <label style="font-size:0.75rem;">Gemini Connected App URL</label>
+            <label style="font-size:0.75rem;">Gemini / Client Connected App URL</label>
             <div class="url-box">
               <span>${mcp.connected_app_url}</span>
               <button class="copy-btn" onclick="copyToClipboard('${mcp.connected_app_url}')">Copy</button>
@@ -418,7 +679,9 @@
       const identifier = document.getElementById('mcpIdentifier').value.trim();
       const name = document.getElementById('mcpName').value.trim();
       const upstream_url = document.getElementById('mcpUpstreamUrl').value.trim();
-      const authType = document.getElementById('mcpAuthType').value;
+      const authType = manualMode
+        ? document.getElementById('mcpAuthType').value
+        : (detectedAuth?.auth_type || 'none');
 
       if (!identifier || !name || !upstream_url) {
         alert('Please fill in identifier, name, and upstream URL.');
@@ -427,16 +690,17 @@
 
       let credentials = { type: authType };
       if (authType === 'bearer') {
-        credentials.token = document.getElementById('bearerToken').value;
+        const tokenInput = document.getElementById('bearerToken');
+        credentials.token = tokenInput ? tokenInput.value : '';
+      } else if (authType === 'basic') {
+        credentials.username = document.getElementById('basicUser').value;
+        credentials.password = document.getElementById('basicPass').value;
       } else if (authType === 'api_key_header') {
         credentials.headerName = document.getElementById('headerName').value;
         credentials.apiKey = document.getElementById('apiKeyVal').value;
       } else if (authType === 'api_key_query') {
         credentials.paramName = document.getElementById('paramName').value;
         credentials.apiKey = document.getElementById('apiKeyVal').value;
-      } else if (authType === 'basic') {
-        credentials.username = document.getElementById('basicUser').value;
-        credentials.password = document.getElementById('basicPass').value;
       } else if (authType === 'custom_headers') {
         try {
           credentials.headers = JSON.parse(document.getElementById('customHeadersJson').value);
@@ -463,6 +727,7 @@
         }
 
         closeModal();
+        showAlert(`Successfully registered "${name}"!`, 'success');
         fetchMcps();
       } catch (err) {
         alert('Error: ' + err.message);
@@ -481,6 +746,7 @@
           alert('Failed to delete endpoint.');
           return;
         }
+        showAlert(`Deleted "${identifier}".`, 'success');
         fetchMcps();
       } catch (err) {
         alert('Error: ' + err.message);
@@ -489,7 +755,7 @@
 
     function copyToClipboard(text) {
       navigator.clipboard.writeText(text);
-      alert('Copied to clipboard! Paste this URL into Gemini Spark Connected Apps.');
+      showAlert('Copied to clipboard! Paste this URL into Gemini Connected Apps or Antigravity.', 'success');
     }
 
     function escapeHtml(str) {

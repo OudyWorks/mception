@@ -4,7 +4,22 @@ import path from 'node:path';
 
 export type CredentialPayload =
   | { type: 'none' }
-  | { type: 'bearer'; token: string }
+  | {
+      type: 'bearer';
+      token: string;
+      refreshToken?: string;
+      tokenEndpoint?: string;
+      clientId?: string;
+      expiresAt?: number;
+    }
+  | {
+      type: 'upstream_oauth';
+      token: string;
+      refreshToken?: string;
+      tokenEndpoint?: string;
+      clientId?: string;
+      expiresAt?: number;
+    }
   | { type: 'api_key_header'; headerName: string; apiKey: string }
   | { type: 'api_key_query'; paramName: string; apiKey: string }
   | { type: 'basic'; username: string; password: string }

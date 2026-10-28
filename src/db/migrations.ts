@@ -56,4 +56,42 @@ export function runMigrations(rawDb: BetterSqlite3.Database): void {
 
     applyV1();
   }
+
+  if (currentVersion < 2) {
+    const applyV2 = rawDb.transaction(() => {
+      rawDb.exec(`
+        CREATE TABLE IF NOT EXISTS upstream_oauth_states (
+            state TEXT PRIMARY KEY,
+            mcp_identifier TEXT NOT NULL,
+            mcp_name TEXT NOT NULL,
+            upstream_url TEXT NOT NULL,
+            token_endpoint TEXT NOT NULL,
+            client_id TEXT NOT NULL,
+            code_verifier TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS credentials_new (
+            id TEXT PRIMARY KEY,
+            mcp_id TEXT UNIQUE NOT NULL REFERENCES registered_mcps(id) ON DELETE CASCADE,
+            auth_type TEXT NOT NULL,
+            encrypted_payload BLOB NOT NULL,
+            iv BLOB NOT NULL,
+            tag BLOB NOT NULL,
+            key_version INTEGER NOT NULL DEFAULT 1,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+
+        INSERT OR IGNORE INTO credentials_new SELECT id, mcp_id, auth_type, encrypted_payload, iv, tag, key_version, created_at, updated_at FROM credentials;
+        DROP TABLE credentials;
+        ALTER TABLE credentials_new RENAME TO credentials;
+        CREATE INDEX IF NOT EXISTS idx_upstream_oauth_states_state ON upstream_oauth_states(state);
+      `);
+      rawDb.pragma('user_version = 2');
+    });
+
+    applyV2();
+  }
 }
